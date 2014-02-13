@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+
+
+<project name="build steper Ant Script" basedir="." >
+
+<taskdef resource="net/sf/antcontrib/antlib.xml"/>
+
+<property name = "build.home" value="D:\bfagt\build_home"/>
+<property name = "src.dir" value="${build.home}\srcs"/>
+<!--
+<property name = "bin.webcnt.cls.dir" value="${build.home}\bin"/>
+-->
+<property name = "bin.webcnt.cls.dir" value="${build.home}\bin\WebContent\WEB-INF\classess"/>
+<property name = "bin.webcnt.dir" value="${build.home}\bin\WebContent"/>
+
+<property name = "deploy.dir" value="C:\apache\tomcat\webapps"/>
+<property name = "war.dir" value="${build.home}\dest"/>
+<property name = "log.dir" value="${build.home}\log"/>
+
+<property name = "backup.dir" value="D:\bfagt\backup"/>
+
+<property name = "local.repo" value="D:\bfagt\local_repo\TEST_PRJ"/>
+
+<target name = "init">
+
+	<delete verbose="true" includeemptydirs = "true">
+		<fileset dir = "${build.home}" includes = "**/*" />
+	</delete>
+	<mkdir dir = "${src.dir}"/>
+	<mkdir dir = "${bin.webcnt.cls.dir}"/>
+	<mkdir dir = "${bin.webcnt.dir}"/>
+	<mkdir dir = "${war.dir}"/>
+	<mkdir dir = "${log.dir}"/>
+	
+	<echo> hello! </echo>
+	<echo message = "world!" />
+<!--
+-->
+</target>
+
+<target name = "src.copy">
+	<copy todir="${src.dir}" verbose="true" overwrite="true" force="true">
+    <fileset dir="${local.repo}">
+      
+	  <include name="**/*.java"/>
+    </fileset>
+	 </copy>
+	<copy todir="${bin.webcnt.cls.dir}" verbose="true" overwrite="true" force="true">
+    <fileset dir="${local.repo}">
+   
+	  <include name="**/*.xml"/>
+	  <include name="**/*.jsp"/>
+
+    </fileset>
+
+  </copy>
+</target>
+
+<path id= "prj.classpath">
+	<fileset dir="${local.repo}/WebContent\WEB-INF\lib">
+	<include name = "**/*" />
+	</fileset>
+</path>
+
+<!--<target name = "comfile">
+	<javac srcdir="${src.dir}"
+         destdir="${bin.webcnt.cls.dir}"
+         classpath="prj.classpath"
+		 failonerror="false"
+		 includeAntRuntime="false"
+		 includeJavaRuntime="false"
+		 verbose="true"
+		 fork="true"
+		 compiler="modern"
+		 executable="C:\Program Files (x86)\Java\jdk1.7.0_51\bin/javac"
+		 
+  />
+</target> -->
+<target name = "compile">
+	<javac srcdir="${src.dir}"
+         destdir="${bin.webcnt.cls.dir}"
+		 failonerror="false"
+		 errorProperty="compile.fail"
+		 verbose="true"
+		 includeAntRuntime="false"
+		 classpathref="prj.classpath">
+	</javac>
+<!-- 과제 1-1 내용 -->
+	<condition property="compile.text" value="컴파일이 성공했습니다.">
+		<not>
+		<isset property="compile.fail"/>
+		</not>
+	</condition>
+	
+	<condition property="compile.text" value="컴파일이 실패했습니다.">
+
+		<isset property="compile.fail"/>
+
+	</condition>
+	
+	<echo message="${compile.text}" />
+
+</target>
+
+<target name = "check">
+<!--과제 1-2 내용 -->
+	<if>
+        <isset property="compile.fail"/>
+        <then>
+            <echo message="컴파일이 실패했습니다."/>
+        </then>
+        <else>
+            <echo message="컴파일이 성공했습니다."/>
+        </else>
+    </if>
+
+</target>
+
+<target name = "package">
+<war destfile="${war.dir}/test.war" webxml="${bin.webcnt.cls.dir}/WebContent/WEB-INF/web.xml">
+  <fileset dir="${bin.webcnt.dir}"> 
+	<include name="**/*" />
+  </fileset>
+  
+</war>
+</target>
+
+<target name = "backup">
+<tstamp>
+    <format property="backup.date" pattern="yyMMddHHmm" />
+  </tstamp>
+  <copy todir="${backup.dir}" verbose="true" overwrite="true" force="true">
+    <fileset dir="${deploy.dir}" includes = "test.war" />
+      <globmapper from="*" to="*.${backup.date}"/>
+	</copy>
+  
+</target>
+
+<target name="was.stop">
+  <exec executable="cmd">
+    <arg value="/c"/>
+    <arg value="net"/>
+    <arg value="stop"/>
+	<arg value="tomcat7"/>
+  </exec>
+</target>
+
+<target name="was.start">
+  <exec executable="cmd">
+    <arg value="/c"/>
+    <arg value="net"/>
+    <arg value="start"/>
+	<arg value="tomcat7"/>
+  </exec>
+</target>
+
+<target name="exet.tst">
+  <exec executable="cmd">
+    <arg value="/c"/>
+    <arg value="hostname"/>
+  </exec>
+</target>
+
+<target name="ftp.put.log">
+<ftp server="localhost"
+       remotedir="/"
+       userid="akghsun82"
+       password="0376109982q"
+       depends="yes"
+	   verbose="yes"
+	   >
+	   
+    <fileset dir="${log.dir}" includes="**/*"/>
+  </ftp>
+</target>
+
+<property name = "now.revno" value=""/>
+<!--svn update <repo_dir> -r<version_num> 
+	ant -f d:\bfagt\script\build.xml -Dnowrevno=8
+
+-->
+<target name="svn.cleanup">
+  <exec executable="cmd" failonerror="true">
+    <arg value="/c"/>
+    <arg value="svn"/>
+	<arg value="cleanup"/>
+	<arg value="${local.repo}"/>
+  </exec>
+</target>
+
+<target name="svn.update">
+  <exec executable="cmd" failonerror="true">
+    <arg value="/c"/>
+    <arg value="svn"/>
+	<arg value="update"/>
+	<arg value="${local.repo}"/>
+	<arg value="-r${now.revno}"/>
+  </exec>
+</target>
+
+<target name="svn.upgrade">
+  <exec executable="cmd" failonerror="true">
+    <arg value="/c"/>
+    <arg value="svn"/>
+	<arg value="upgrade"/>
+	<arg value="${local.repo}"/>
+  </exec>
+</target>
+
+<!-- 2번 과제 내용 -->
+<target name="delete.log">
+	<tstamp>
+		<format property="log.date" pattern="yyMMddHHmm" offset="-15" unit="day"/>
+	</tstamp>
+	
+	<delete verbose="true">
+		<fileset dir="${backup.dir}">
+			<include name="**/*"/>
+			<date datetime="${log.date}" pattern="yyMMddHHmm" when="before"/>
+		</fileset>
+	</delete>
+</target>
+<!--
+svn diff ${local.repo} -r${now.revno}:${pre.revno} summarize-->
+
+<target name="svn.diff">
+	<math result="pre.revno" operand1="${now.revno}" operation="-" operand2="1" datatype="long"/>
+	<echo>PREV no :${pre.revno}</echo>
+	<echo>POST no :${now.revno}</echo>
+	<exec executable="cmd" failonerror="true" outputproperty="change.set">
+    <arg value="/c"/>
+    <arg value="svn"/>
+	<arg value="diff"/>
+	<arg value="${local.repo}"/>
+	<arg value="-r${now.revno}:${pre.revno}"/>
+	<arg value="--summarize"/>
+  </exec>
+  
+  <echo>${change.set}</echo>
+ 
+</target>
+
+<target name="compare.copy">
+	<for list="change.set" param="change.file" delimiter=";">
+	<sequential>
+	
+	</sequential>
+	</for>
+</target>
+
+<target name="src.update" depends="svn.upgrade,svn.cleanup,svn.update"/>
+
+<target name = "build" depends="init,src.copy,compile,check,package,backup"/>
+</project>
